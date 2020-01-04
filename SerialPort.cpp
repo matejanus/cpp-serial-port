@@ -10,6 +10,16 @@ SerialPort::SerialPort(std::string device, SerialPortParams::BaudRate baudRate) 
     openPort();
 }
 
+SerialPort::SerialPort(std::string device, SerialPortParams::BaudRate baudRate, int timeout) : m_device(device),
+                                                                                               m_baudRate(baudRate),
+                                                                                               m_fileDesc(-1),
+                                                                                               m_state(SerialPortParams::State::CLOSED),
+                                                                                               m_timeout(timeout),
+                                                                                               echoEnabled(false)
+{
+    openPort();
+}
+
 SerialPort::~SerialPort()
 {
     try
@@ -36,7 +46,10 @@ void SerialPort::closePort()
 }
 
 void SerialPort::configureTermios()
-{
+{   
+    if(m_fileDesc == -1)
+            throw SerialPortException(__FILE__, __LINE__, __PRETTY_FUNCTION__ + std::string("file descriptor not valid."));
+   
     struct termios tty;
     std::memset(&tty, 0, sizeof(tty));
 
@@ -144,7 +157,7 @@ std::string SerialPort::readPort()
     if (m_fileDesc == 0)
     {
         // THROW_EXCEPT("Read() was called but file descriptor (fileDesc) was 0, indicating file has not been opened.");
-        std::cout << "Read() was called but file descriptor (fileDesc) was 0, indicating file has not been opened.\n";
+        throw SerialPortException(__FILE__, __LINE__, __PRETTY_FUNCTION__ + std::string("Read() was called but file descriptor (fileDesc) was 0, indicating file has not been opened.\n"));
     }
     std::array<char, 255> buffer = {0};
     int n = read(m_fileDesc, &buffer[0], buffer.size());
@@ -160,58 +173,69 @@ std::string SerialPort::readPort()
 
 void SerialPort::openPort()
 {
-	std::cout << "Attempting to open COM port \"" << m_device << "\"." << std::endl;
+    std::cout << "Attempting to open COM port \"" << m_device << "\"." << std::endl;
+
+    if (m_device.empty())
+    {
+        throw SerialPortException(__FILE__, __LINE__, __PRETTY_FUNCTION__ + std::string("Attempted to open file when file path has not been assigned to."));
+    }
+
     m_fileDesc = open(m_device.c_str(), O_RDWR);
 
-    if(m_fileDesc == -1) {
-        std::cout<<"Could not open device \n";
+    if (m_fileDesc == -1)
+    {
+        throw SerialPortException(__FILE__, __LINE__,std::string("Could not open device ") + m_device + std::string(". Is the device name correct and do you have read/write permission?"));
+        std::cout << "Could not open device \n";
     }
     configureTermios();
     std::cout << "COM port opened successfully." << std::endl;
     m_state = SerialPortParams::State::OPEN;
 }
 
- void SerialPort::writePort(const std::string& data)
- {
-    if(m_state != SerialPortParams::State::OPEN)
-        // THROW_EXCEPT(std::string() + __PRETTY_FUNCTION__ + " called but state != OPEN. Please call Open() first.");
+void SerialPort::writePort(const std::string &data)
+{
+    if (m_state != SerialPortParams::State::OPEN)
+        throw SerialPortException(__FILE__, __LINE__, __PRETTY_FUNCTION__ + std::string("called but state != OPEN. Please call Open() first."));
 
-    if(m_fileDesc < 0) {
-        // THROW_EXCEPT(std::string() + __PRETTY_FUNCTION__ + " called but file descriptor < 0, indicating file has not been opened.");
+    if (m_fileDesc < 0)
+    {
+        throw SerialPortException(__FILE__, __LINE__, __PRETTY_FUNCTION__ + std::string("called but file descriptor < 0, indicating file has not been opened."));
     }
 
     int writeResult = write(m_fileDesc, data.c_str(), data.size());
 
-    if (writeResult == -1) {
+    if (writeResult == -1)
+    {
         throw std::system_error(EFAULT, std::system_category());
     }
- }
+}
 
-
-void SerialPort::setDevice(const std::string &device){
+void SerialPort::setDevice(const std::string &device)
+{
     m_device = device;
-    if(m_state == SerialPortParams::State::OPEN)
+    if (m_state == SerialPortParams::State::OPEN)
         configureTermios();
 }
-void SerialPort::setBaudRate(SerialPortParams::BaudRate baudRate){
+void SerialPort::setBaudRate(SerialPortParams::BaudRate baudRate)
+{
     m_baudRate = baudRate;
-    if(m_state == SerialPortParams::State::OPEN)
+    if (m_state == SerialPortParams::State::OPEN)
         configureTermios();
 }
-void SerialPort::setTimeout(int32_t timeout_ms){
+void SerialPort::setTimeout(int32_t timeout_ms)
+{
 
-    if(timeout_ms < -1)
+    if (timeout_ms < -1)
         throw SerialPortException(__FILE__, __LINE__, std::string("timeout_ms provided to ") + __PRETTY_FUNCTION__ + std::string(" was < -1, which is invalid."));
-        // THROW_EXCEPT(std::string() + "timeout_ms provided to " + __PRETTY_FUNCTION__ + " was < -1, which is invalid.");
-    // if(timeout_ms > 25500)
-    //     THROW_EXCEPT(std::string() + "timeout_ms provided to " + __PRETTY_FUNCTION__ + " was > 25500, which is invalid.");
-    // if(state_ == State::OPEN)
-    //     THROW_EXCEPT(std::string() + __PRETTY_FUNCTION__ + " called while state == OPEN.");
+    else if (timeout_ms > 25500)
+        throw SerialPortException(__FILE__, __LINE__, std::string("timeout_ms provided to ") + __PRETTY_FUNCTION__ + std::string(" was > 25500, which is invalid."));
+    if (m_state == SerialPortParams::State::OPEN)
+        throw SerialPortException(__FILE__, __LINE__, __PRETTY_FUNCTION__ + std::string(" called while state == OPEN."));
     m_timeout = timeout_ms;
-
 }
-void SerialPort::setEcho(bool value){
+void SerialPort::setEcho(bool value)
+{
     echoEnabled = value;
-    if(m_state == SerialPortParams::State::OPEN)
+    if (m_state == SerialPortParams::State::OPEN)
         configureTermios();
 }

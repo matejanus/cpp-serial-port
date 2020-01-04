@@ -38,6 +38,7 @@ class SerialPort
 public:
     SerialPort() = delete;
     SerialPort(std::string device, SerialPortParams::BaudRate baudRate);
+    SerialPort(std::string device, SerialPortParams::BaudRate baudRate, int timeout);
     virtual ~SerialPort();
 
     std::string readPort();
