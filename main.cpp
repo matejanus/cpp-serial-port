@@ -10,6 +10,8 @@ int main()
     cout<<"enter something:\n";
     auto sd = SerialDriver(); 
     sd.start();
-    while(1){}
+    while(1){
+        std::cout<<sd.getMsg();
+    }
     return 0;
 }

@@ -60,5 +60,4 @@ private:
     SerialPortParams::State m_state;
     int m_timeout;
     bool echoEnabled;
-
 };

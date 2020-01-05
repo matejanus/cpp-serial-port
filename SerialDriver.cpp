@@ -13,6 +13,18 @@ SerialDriver::~SerialDriver()
         m_thread.join();
     }
 }
+
+std::string SerialDriver::getMsg()
+{
+    if(!msgQueue.empty())
+    {
+        auto tmp = msgQueue.front();
+        msgQueue.pop();
+        return tmp;
+    }
+    return std::string();
+}
+
 void SerialDriver::start()
 {
     m_thread = std::thread(&SerialDriver::ThreadMain, this);
@@ -20,15 +32,16 @@ void SerialDriver::start()
 
 void SerialDriver::ThreadMain()
 {   
-    int i = 0; 
     auto sp = SerialPort("/dev/ttyUSB0", SerialPortParams::BaudRate::B_115200);
     while (!m_running)
     {
         // Do something useful, e.g:
-        auto data = sp.readPort();
-        std::cout<<data;
-        std::cout << "hi there " << i <<std::endl;
-        i++;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        // auto data = sp.readPort();
+        // std::cout<<data;
+        // msgQueue.push(&data);
+        std::lock_guard<std::mutex> lockGuard(mutex);
+        msgQueue.push(sp.readPort());
+        // std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
+
