@@ -1,7 +1,7 @@
 #include "SerialDriver.hpp"
 #include "SerialPort.hpp"
 
-SerialDriver::SerialDriver() : m_thread(), m_running(false)
+SerialDriver::SerialDriver(std::condition_variable& var) : m_thread(), m_running(false), condVar(var)
 {
 }
 
@@ -20,7 +20,7 @@ std::string SerialDriver::getMsg()
     {
         auto tmp = msgQueue.front();
         msgQueue.pop();
-        return tmp;
+        return "msg: " + tmp;
     }
     return std::string();
 }
@@ -41,6 +41,7 @@ void SerialDriver::ThreadMain()
         // msgQueue.push(&data);
         std::lock_guard<std::mutex> lockGuard(mutex);
         msgQueue.push(sp.readPort());
+        condVar.notify_all();
         // std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }

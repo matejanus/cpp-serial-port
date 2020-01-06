@@ -5,13 +5,14 @@
 #include <queue>
 #include <string>
 #include <mutex>
+#include <condition_variable>
 
 class SerialDriver
 {
 
 public:
     void start();
-    SerialDriver();
+    SerialDriver(std::condition_variable &var);
     ~SerialDriver();
     std::string getMsg();
 private:
@@ -21,4 +22,5 @@ private:
     bool m_running;
     std::queue<std::string> msgQueue;
     std::mutex mutex;
+    std::condition_variable &condVar;
 };
