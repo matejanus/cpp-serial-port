@@ -14,9 +14,14 @@ int main()
     std::unique_lock<std::mutex> mlock(m_mutex);
     auto sd = SerialDriver(condVar); 
     sd.start();
-    while(1){
+
+    while(true){
         condVar.wait(mlock);
+        while (sd.getMessageQueueSize() > 0)
+        {
         std::cout<<sd.getMsg();
+        }
+
     }
     return 0;
 }
